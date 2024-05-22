@@ -1,0 +1,19 @@
+{
+  "name": "money-tab-telegram-bot",
+  "version": "1.0.0",
+  "description": "A node server for the money-tab-telegram-bot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devitcf/money-tab-telegram-bot.git"
+  },
+  "author": "Devi Tse",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/devitcf/money-tab-telegram-bot/issues"
+  },
+  "homepage": "https://github.com/devitcf/money-tab-telegram-bot#readme"
+}

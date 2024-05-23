@@ -1,5 +1,4 @@
-import { Command } from "../types/command";
-import { ErrorCode, ErrorType } from "../types/error";
+import { Command, ErrorCode, ErrorType } from "../types";
 
 export const incorrectUsageMsg = (command: Command): string => {
   let msg = "Incorrect command usage. The usage should be: \n";

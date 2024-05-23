@@ -1,13 +1,13 @@
 import TelegramBot = require("node-telegram-bot-api");
+import { getCourse } from "./api";
 import { incorrectUsageMsg, logErrorMessage } from "./helpers/command";
-import { Command } from "./types/command";
-import { ErrorType } from "./types/error";
+import { tokenSession } from "./session/tokenSession";
+import { Command, Course, CourseType, ErrorType } from "./types";
 
 require("dotenv").config();
 
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN ?? "", { polling: true });
 
-const tokenByUser: { [username: string]: { accessToken: string; refreshToken?: string } } = {};
 const inlineKeyboard = [
   [
     {
@@ -21,12 +21,6 @@ const inlineKeyboard = [
       callback_data: Command.UPDATE_REFRESH_TOKEN,
     },
   ],
-  [
-    {
-      text: "Logout",
-      callback_data: Command.LOGOUT,
-    },
-  ],
 ];
 
 // Start command
@@ -35,7 +29,7 @@ bot.onText(/\/start/, async (msg, match) => {
   const name = msg.chat.first_name;
   const username = msg.chat.username;
 
-  if (!tokenByUser[msg.chat.username as string]) {
+  if (!tokenSession.tokenByUser[msg.chat.username as string]) {
     const accessTokenPrompt = await bot.sendMessage(msg.chat.id, `Hi ${name}, please select your options.`, {
       reply_markup: {
         // force_reply: true,
@@ -59,7 +53,7 @@ bot.onText(/\/accesstoken(.*)/, (msg, match) => {
   }
 
   const accessToken = match[1].replace(" ", "");
-  tokenByUser[msg.chat.username!] = { ...tokenByUser[msg.chat.username!], accessToken };
+  tokenSession.updateAccessToken(msg.chat.username!, accessToken);
 
   bot.sendMessage(msg.chat.id, "Access token saved.").catch((e) => logErrorMessage(e));
 });
@@ -76,9 +70,44 @@ bot.onText(/\/refreshtoken(.*)/, (msg, match) => {
   }
 
   const refreshToken = match[1].replace(" ", "");
-  tokenByUser[msg.chat.username!] = { ...tokenByUser[msg.chat.username!], refreshToken };
+
+  tokenSession.updateRefreshToken(msg.chat.username!, refreshToken);
 
   bot.sendMessage(msg.chat.id, "Refresh token saved.").catch((e) => logErrorMessage(e));
+});
+
+// Handle refreshToken command
+bot.onText(/\/course/, async (msg) => {
+  const token = tokenSession.getToken(msg.chat.username);
+  if (!token || !token?.accessToken) {
+    bot
+      .sendMessage(
+        msg.chat.id,
+        "Missing access token. Please add your access token using command `/accesstoken YOUR_ACCESS_TOKEN_HERE`",
+        {
+          parse_mode: "Markdown",
+        }
+      )
+      .catch((e: ErrorType) => logErrorMessage(e));
+    return;
+  }
+
+  let courses: Course[] = [];
+
+  const coursesResponse = await getCourse(msg.chat.username!);
+  courses = coursesResponse.value;
+
+  const accessTokenPrompt = await bot.sendMessage(msg.chat.id, `Hi, please select your options.`, {
+    reply_markup: {
+      inline_keyboard: [
+        courses.map((course) => ({
+          text: course.title,
+          callback_data: course.url_key,
+        })),
+      ],
+    },
+  });
+  console.log(courses);
 });
 
 // Callback query
@@ -88,8 +117,11 @@ bot.on("callback_query", (query) => {
     return;
   }
   switch (query.data) {
-    case Command.LOGOUT:
-      bot.sendMessage(chat.id, "Logout");
+    case CourseType["3PM_PREMIUM"]:
+      bot.sendMessage(chat.id, "3PM_PREMIUM");
+      break;
+    case CourseType["9PM_PREMIUM"]:
+      bot.sendMessage(chat.id, "9PM_PREMIUM");
       break;
     default:
   }

@@ -1,4 +1,5 @@
 import { Command } from "../types/command";
+import { ErrorCode, ErrorType } from "../types/error";
 
 export const incorrectUsageMsg = (command: Command): string => {
   let msg = "Incorrect command usage. The usage should be: \n";
@@ -11,4 +12,18 @@ export const incorrectUsageMsg = (command: Command): string => {
       break;
   }
   return msg;
+};
+
+export const logErrorMessage = (e: ErrorType): void => {
+  switch (e.code) {
+    case ErrorCode.EFATAL:
+      console.log(e);
+      break;
+    case ErrorCode.EPARSE:
+      console.log(e.response.body);
+      break;
+    case ErrorCode.ETELEGRAM:
+      console.log(e.response.body.description);
+      break;
+  }
 };

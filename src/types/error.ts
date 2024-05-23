@@ -18,7 +18,10 @@ export type ParseError = {
 export type TelegramError = {
   code: ErrorCode.ETELEGRAM;
   response: {
-    body: object;
+    body: {
+      description: string;
+      [key: string]: any;
+    };
   };
 };
 

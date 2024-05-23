@@ -1,7 +1,7 @@
 import TelegramBot = require("node-telegram-bot-api");
+import { incorrectUsageMsg, logErrorMessage } from "./helpers/command";
 import { Command } from "./types/command";
-import { ErrorCode, ErrorType } from "./types/error";
-import { incorrectUsageMsg } from "./helpers/command";
+import { ErrorType } from "./types/error";
 
 require("dotenv").config();
 
@@ -48,33 +48,37 @@ bot.onText(/\/start/, async (msg, match) => {
 });
 
 // Handle accessToken command
-bot.onText(/\/accesstoken(.*)/, async (msg, match) => {
+bot.onText(/\/accesstoken(.*)/, (msg, match) => {
   if (!match?.[1]) {
-    try {
-      await bot.sendMessage(msg.chat.id, incorrectUsageMsg(Command.UPDATE_ACCESS_TOKEN), {
+    bot
+      .sendMessage(msg.chat.id, incorrectUsageMsg(Command.UPDATE_ACCESS_TOKEN), {
         parse_mode: "Markdown",
-      });
-    } catch (e: any) {
-      switch ((e as ErrorType)?.code) {
-        case ErrorCode.EFATAL:
-          console.log(e);
-          break;
-        case ErrorCode.EPARSE:
-          console.log(e.response.body);
-          break;
-        case ErrorCode.ETELEGRAM:
-          console.log(e.response.body.description);
-          break;
-      }
-    }
+      })
+      .catch((e: ErrorType) => logErrorMessage(e));
     return;
   }
 
   const accessToken = match[1].replace(" ", "");
   tokenByUser[msg.chat.username!] = { ...tokenByUser[msg.chat.username!], accessToken };
 
-  console.log(tokenByUser);
-  bot.sendMessage(msg.chat.id, "Access token saved.");
+  bot.sendMessage(msg.chat.id, "Access token saved.").catch((e) => logErrorMessage(e));
+});
+
+// Handle refreshToken command
+bot.onText(/\/refreshtoken(.*)/, (msg, match) => {
+  if (!match?.[1]) {
+    bot
+      .sendMessage(msg.chat.id, incorrectUsageMsg(Command.UPDATE_REFRESH_TOKEN), {
+        parse_mode: "Markdown",
+      })
+      .catch((e: ErrorType) => logErrorMessage(e));
+    return;
+  }
+
+  const refreshToken = match[1].replace(" ", "");
+  tokenByUser[msg.chat.username!] = { ...tokenByUser[msg.chat.username!], refreshToken };
+
+  bot.sendMessage(msg.chat.id, "Refresh token saved.").catch((e) => logErrorMessage(e));
 });
 
 // Callback query

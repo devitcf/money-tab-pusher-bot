@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/devitcf/money-tab-telegram-bot#readme",
   "dependencies": {
+    "cron": "^3.1.7",
     "dotenv": "^16.4.5",
     "node-telegram-bot-api": "^0.66.0"
   },

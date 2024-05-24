@@ -1,10 +1,13 @@
 import TelegramBot = require("node-telegram-bot-api");
 import { getCourse, getPaidVideo } from "./api";
-import { incorrectUsageMsg, logErrorMessage } from "./helpers/command";
+import { incorrectUsageMsg, logErrorMessage } from "./helpers/commands";
 import wordings from "./helpers/wordings";
 import { tokenSession } from "./session/tokenSession";
 import { courseSession } from "./session/courseSession";
-import { Command, ErrorType } from "./types";
+import { QueryType, Command, ErrorType } from "./types";
+import { getClearSubscriptionKeyboard, getSetSubscriptionKeyboard } from "./helpers/inlineKeyboards";
+import { CronJob } from "cron";
+import { getVideosByUsername, updateCourseByUsername } from "./helpers/courses";
 
 require("dotenv").config();
 
@@ -26,7 +29,7 @@ bot.onText(/\/start/, async (msg) => {
   }
 });
 
-// Handle accessToken command
+// Handle /accessToken command
 bot.onText(/\/accesstoken(.*)/, (msg, match) => {
   if (!match?.[1]) {
     bot
@@ -43,7 +46,7 @@ bot.onText(/\/accesstoken(.*)/, (msg, match) => {
   bot.sendMessage(msg.chat.id, "Access token saved.").catch((e) => logErrorMessage(e));
 });
 
-// Handle refreshToken command
+// Handle /refreshToken command
 bot.onText(/\/refreshtoken(.*)/, (msg, match) => {
   if (!match?.[1]) {
     bot
@@ -61,60 +64,59 @@ bot.onText(/\/refreshtoken(.*)/, (msg, match) => {
   bot.sendMessage(msg.chat.id, "Refresh token saved.").catch((e) => logErrorMessage(e));
 });
 
-// Handle refreshToken command
+// Handle /course command
 bot.onText(/\/course/, async (msg) => {
-  const token = tokenSession.getToken(msg.chat.username);
-  if (!token || !token?.accessToken) {
-    bot
-      .sendMessage(msg.chat.id, wordings.MISSING_TOKEN_MSG, {
-        parse_mode: "Markdown",
-      })
-      .catch((e: ErrorType) => logErrorMessage(e));
-    return;
+  const {
+    chat: { username, id },
+  } = msg;
+  if (username) {
+    await updateCourseByUsername(username, bot, id);
   }
-
-  const res = await getCourse(msg.chat.username!);
-  const courses = res.value;
-
-  courseSession.updateCourseByUser(msg.chat.username!, courses);
-
-  bot
-    .sendMessage(msg.chat.id, wordings.SELECT_YOUR_COURSE, {
-      reply_markup: {
-        inline_keyboard: [
-          courses.map((course) => ({
-            text: course.title,
-            callback_data: `${course.url_key}|${course.latest_topic_id}`,
-          })),
-        ],
-      },
-    })
-    .catch((e: ErrorType) => logErrorMessage(e));
 });
 
-// Callback query
+// Handle callback query
 bot.on("callback_query", async (query) => {
-  const { data, message } = query;
-  if (!message || !data) {
+  const { data, message: { chat } = {} } = query;
+  if (!chat || !data) {
     return;
   }
-  const [urlKey, topicId] = data.split("|");
-  const res = await getPaidVideo(message.chat.username!, topicId);
-  if (!res.videos) {
-    return;
-  }
+  const { id: chatId, username } = chat;
+  const [queryType, ...values] = data.split("|");
 
-  let responseText = "";
-  for (const video of res.videos) {
-    responseText += `${video.title} \n\n ${video.youtube?.video_url}`;
-  }
+  switch (queryType) {
+    case QueryType.VIEW_VIDEO: {
+      const [urlKey, topicId] = values;
+      await getVideosByUsername(username!, topicId, urlKey, bot, chatId);
+      break;
+    }
+    case QueryType.SET_PUSHER_JOB: {
+      const [chatId, urlKey] = values;
+      const job = CronJob.from({
+        cronTime: `1 ${urlKey[0]} * * * *`,
+        onTick: async () => {
+          const courses = await updateCourseByUsername(username!);
+          const topicId = courses?.find((course) => course.url_key === urlKey)?.latest_topic_id;
+          if (topicId) {
+            await getVideosByUsername(username!, topicId, urlKey, bot, Number(chatId));
+          }
+        },
+        start: true,
+        timeZone: "Asia/Hong_Kong",
+      });
 
-  bot
-    .sendMessage(message.chat.id, responseText, {
-      parse_mode: "Markdown",
-      // reply_markup: {
-      // inline_keyboard: inlineKeyboard,
-      // },
-    })
-    .catch((e) => logErrorMessage(e));
+      const course = courseSession.courseByUser[username!]?.find((course) => course.url_key === urlKey);
+      if (course) {
+        course.job = job;
+      }
+      break;
+    }
+    case QueryType.CLEAR_PUSHER_JOB: {
+      const [urlKey] = values;
+      const course = courseSession.courseByUser[username!]?.find((course) => course.url_key === urlKey);
+      if (course) {
+        course.job?.stop();
+      }
+      break;
+    }
+  }
 });

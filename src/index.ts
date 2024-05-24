@@ -77,7 +77,7 @@ bot.onText(/\/logout/, async (msg) => {
     chat: { username, id },
   } = msg;
   if (username) {
-    courseSession.courseByUser[username].forEach((course) => course.job?.stop());
+    courseSession.courseByUser[username]?.forEach((course) => course.job?.stop());
     delete courseSession.courseByUser[username];
     delete tokenSession.tokenByUser[username];
   }

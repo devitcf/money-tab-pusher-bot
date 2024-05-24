@@ -6,10 +6,15 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc src/index.ts --outDir dist",
+    "add:dist": "git add dist",
     "start": "node dist/index.js",
     "build:start": "npm run build && npm run start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "pre-commit": [
+    "build",
+    "add:dist"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devitcf/money-tab-telegram-bot.git"

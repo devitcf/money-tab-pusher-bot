@@ -10,3 +10,12 @@ export const CourseType = {
   "9PM_PREMIUM": "9pm-premium",
 } as const;
 export type CourseType = (typeof CourseType)[keyof typeof CourseType];
+
+export type Video = {
+  id: string;
+  title: string;
+  platform: "youtube";
+  youtube?: {
+    video_url: string;
+  };
+};

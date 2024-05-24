@@ -1,43 +1,28 @@
 import TelegramBot = require("node-telegram-bot-api");
-import { getCourse } from "./api";
+import { getCourse, getPaidVideo } from "./api";
 import { incorrectUsageMsg, logErrorMessage } from "./helpers/command";
+import wordings from "./helpers/wordings";
 import { tokenSession } from "./session/tokenSession";
-import { Command, Course, CourseType, ErrorType } from "./types";
+import { courseSession } from "./session/courseSession";
+import { Command, ErrorType } from "./types";
 
 require("dotenv").config();
 
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN ?? "", { polling: true });
 
-const inlineKeyboard = [
-  [
-    {
-      text: "Update access token",
-      callback_data: Command.UPDATE_ACCESS_TOKEN,
-    },
-  ],
-  [
-    {
-      text: "Update refresh token (optional)",
-      callback_data: Command.UPDATE_REFRESH_TOKEN,
-    },
-  ],
-];
-
 // Start command
-bot.onText(/\/start/, async (msg, match) => {
-  console.log(msg);
-  const name = msg.chat.first_name;
-  const username = msg.chat.username;
+bot.onText(/\/start/, async (msg) => {
+  const { first_name: name, username } = msg.chat;
 
-  if (!tokenSession.tokenByUser[msg.chat.username as string]) {
-    const accessTokenPrompt = await bot.sendMessage(msg.chat.id, `Hi ${name}, please select your options.`, {
-      reply_markup: {
-        // force_reply: true,
-        // input_field_placeholder: "/accesstoken",
-        keyboard: inlineKeyboard,
-        // inline_keyboard: inlineKeyboard,
-      },
-    });
+  if (!tokenSession.tokenByUser[username!]) {
+    bot.sendMessage(msg.chat.id, `Hi ${name}`).catch((e) => logErrorMessage(e));
+    bot
+      .sendMessage(
+        msg.chat.id,
+        "In order to use this bot, please provide your access token by the command `/accesstoken YOUR_ACCESS_TOKEN_HERE`",
+        { parse_mode: "Markdown" }
+      )
+      .catch((e) => logErrorMessage(e));
   }
 });
 
@@ -81,51 +66,55 @@ bot.onText(/\/course/, async (msg) => {
   const token = tokenSession.getToken(msg.chat.username);
   if (!token || !token?.accessToken) {
     bot
-      .sendMessage(
-        msg.chat.id,
-        "Missing access token. Please add your access token using command `/accesstoken YOUR_ACCESS_TOKEN_HERE`",
-        {
-          parse_mode: "Markdown",
-        }
-      )
+      .sendMessage(msg.chat.id, wordings.MISSING_TOKEN_MSG, {
+        parse_mode: "Markdown",
+      })
       .catch((e: ErrorType) => logErrorMessage(e));
     return;
   }
 
-  let courses: Course[] = [];
+  const res = await getCourse(msg.chat.username!);
+  const courses = res.value;
 
-  const coursesResponse = await getCourse(msg.chat.username!);
-  courses = coursesResponse.value;
+  courseSession.updateCourseByUser(msg.chat.username!, courses);
 
-  const accessTokenPrompt = await bot.sendMessage(msg.chat.id, `Hi, please select your options.`, {
-    reply_markup: {
-      inline_keyboard: [
-        courses.map((course) => ({
-          text: course.title,
-          callback_data: course.url_key,
-        })),
-      ],
-    },
-  });
-  console.log(courses);
+  bot
+    .sendMessage(msg.chat.id, wordings.SELECT_YOUR_COURSE, {
+      reply_markup: {
+        inline_keyboard: [
+          courses.map((course) => ({
+            text: course.title,
+            callback_data: `${course.url_key}|${course.latest_topic_id}`,
+          })),
+        ],
+      },
+    })
+    .catch((e: ErrorType) => logErrorMessage(e));
 });
 
 // Callback query
-bot.on("callback_query", (query) => {
-  const { message: { chat, message_id, text } = {} } = query;
-  if (!chat) {
+bot.on("callback_query", async (query) => {
+  const { data, message } = query;
+  if (!message || !data) {
     return;
   }
-  switch (query.data) {
-    case CourseType["3PM_PREMIUM"]:
-      bot.sendMessage(chat.id, "3PM_PREMIUM");
-      break;
-    case CourseType["9PM_PREMIUM"]:
-      bot.sendMessage(chat.id, "9PM_PREMIUM");
-      break;
-    default:
+  const [urlKey, topicId] = data.split("|");
+  const res = await getPaidVideo(message.chat.username!, topicId);
+  if (!res.videos) {
+    return;
   }
-  bot.answerCallbackQuery({
-    callback_query_id: query.id,
-  });
+
+  let responseText = "";
+  for (const video of res.videos) {
+    responseText += `${video.title} \n\n ${video.youtube?.video_url}`;
+  }
+
+  bot
+    .sendMessage(message.chat.id, responseText, {
+      parse_mode: "Markdown",
+      // reply_markup: {
+      // inline_keyboard: inlineKeyboard,
+      // },
+    })
+    .catch((e) => logErrorMessage(e));
 });

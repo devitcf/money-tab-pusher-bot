@@ -1,7 +1,8 @@
 import { Command, ErrorCode, ErrorType } from "../types";
+import wordings from "./wordings";
 
 export const incorrectUsageMsg = (command: Command): string => {
-  let msg = "Incorrect command usage. The usage should be: \n";
+  let msg = wordings.INCORRECT_COMMAND_USAGE;
   switch (command) {
     case Command.UPDATE_ACCESS_TOKEN:
       msg += "`/accesstoken YOUR_ACCESS_TOKEN_HERE`";
@@ -12,7 +13,6 @@ export const incorrectUsageMsg = (command: Command): string => {
   }
   return msg;
 };
-
 export const logErrorMessage = (e: ErrorType): void => {
   switch (e.code) {
     case ErrorCode.EFATAL:

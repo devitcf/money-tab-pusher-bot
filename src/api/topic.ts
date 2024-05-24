@@ -1,11 +1,10 @@
-import { Course } from "../types";
 import { tokenSession } from "../session/tokenSession";
+import { Video } from "../types";
 import { renewToken } from "./auth";
 
-export const getCourse = async (username: string, retry = true): Promise<{ value: Course[] }> => {
+export const getPaidVideo = async (username: string, topicId: string, retry = true): Promise<{ videos: Video[] }> => {
   const token = tokenSession.getToken(username);
-
-  const url = "https://api.money-tab.com/api/student/get-course";
+  const url = `https://api.money-tab.com/api/topic/paid-video?topic_id=${topicId}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token?.accessToken}` },
   });
@@ -18,7 +17,7 @@ export const getCourse = async (username: string, retry = true): Promise<{ value
       const tokenRes = await renewToken(token.refreshToken);
       tokenSession.updateAccessToken(username, tokenRes.accessToken);
       tokenSession.updateRefreshToken(username, tokenRes.refreshToken);
-      return getCourse(username, false);
+      return getPaidVideo(username, topicId, false);
     }
     throw new Error(res.statusText);
   }

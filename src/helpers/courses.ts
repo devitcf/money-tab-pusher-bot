@@ -1,7 +1,7 @@
+import TelegramBot = require("node-telegram-bot-api");
 import { tokenSession } from "../session/tokenSession";
 import { getCourse, getPaidVideo } from "../api";
 import { courseSession } from "../session/courseSession";
-import TelegramBot from "node-telegram-bot-api";
 import wordings from "./wordings";
 import { ErrorType, QueryType, UserCourse } from "../types";
 import { logErrorMessage } from "./commands";

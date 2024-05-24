@@ -122,7 +122,10 @@ bot.on("callback_query", async (query) => {
     case QueryType.CLEAR_PUSHER_JOB: {
       const [urlKey] = values;
       const course = courseSession.courseByUser[username!]?.find((course) => course.url_key === urlKey);
-      course?.job?.stop();
+      if (course) {
+        course.job?.stop();
+        course.job = undefined;
+      }
       break;
     }
   }

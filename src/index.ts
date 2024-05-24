@@ -1,11 +1,8 @@
 import TelegramBot = require("node-telegram-bot-api");
-import { getCourse, getPaidVideo } from "./api";
 import { incorrectUsageMsg, logErrorMessage } from "./helpers/commands";
-import wordings from "./helpers/wordings";
 import { tokenSession } from "./session/tokenSession";
 import { courseSession } from "./session/courseSession";
 import { QueryType, Command, ErrorType } from "./types";
-import { getClearSubscriptionKeyboard, getSetSubscriptionKeyboard } from "./helpers/inlineKeyboards";
 import { CronJob } from "cron";
 import { getVideosByUsername, updateCourseByUsername } from "./helpers/courses";
 
@@ -74,6 +71,18 @@ bot.onText(/\/course/, async (msg) => {
   }
 });
 
+// Handle /logout command
+bot.onText(/\/logout/, async (msg) => {
+  const {
+    chat: { username, id },
+  } = msg;
+  if (username) {
+    courseSession.courseByUser[username].forEach((course) => course.job?.stop());
+    delete courseSession.courseByUser[username];
+    delete tokenSession.tokenByUser[username];
+  }
+});
+
 // Handle callback query
 bot.on("callback_query", async (query) => {
   const { data, message: { chat } = {} } = query;
@@ -113,9 +122,7 @@ bot.on("callback_query", async (query) => {
     case QueryType.CLEAR_PUSHER_JOB: {
       const [urlKey] = values;
       const course = courseSession.courseByUser[username!]?.find((course) => course.url_key === urlKey);
-      if (course) {
-        course.job?.stop();
-      }
+      course?.job?.stop();
       break;
     }
   }

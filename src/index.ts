@@ -8,7 +8,16 @@ import { getVideosByUsername, updateCourseByUsername } from "./helpers/courses";
 
 require("dotenv").config();
 
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN ?? "", { polling: true });
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN ?? "", {
+  polling: true,
+  request: {
+    agentOptions: {
+      keepAlive: true,
+      family: 4,
+    },
+    url: "https://api.telegram.org",
+  },
+});
 
 // Start command
 bot.onText(/\/start/, async (msg) => {

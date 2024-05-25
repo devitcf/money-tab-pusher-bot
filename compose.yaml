@@ -1,0 +1,4 @@
+services:
+  money-tab_telegram-bot:
+    image: devitcf/money-tab_telegram-bot
+    restart: unless-stopped

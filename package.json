@@ -5,18 +5,11 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "rimraf dist && tsc",
+    "build": "tsc",
     "start": "node dist/index.js",
     "build:start": "npm run build && npm run start",
-    "ts:check": "tsc --project tsconfig.json",
-    "add:dist": "git add dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "pre-commit": [
-    "ts:check",
-    "build",
-    "add:dist"
-  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devitcf/money-tab-telegram-bot.git"
@@ -35,9 +28,7 @@
   "devDependencies": {
     "@types/node": "^20.12.12",
     "@types/node-telegram-bot-api": "^0.64.6",
-    "pre-commit": "^1.2.2",
     "prettier": "^3.2.5",
-    "rimraf": "^5.0.7",
     "tsx": "^4.10.5",
     "typescript": "^5.4.5"
   }

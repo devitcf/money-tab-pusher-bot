@@ -109,8 +109,9 @@ bot.on("callback_query", async (query) => {
     }
     case QueryType.SET_PUSHER_JOB: {
       const [chatId, urlKey] = values;
+      const hourInPm = 12 + Number(urlKey[0]);
       const job = CronJob.from({
-        cronTime: `1 ${urlKey[0]} * * * *`,
+        cronTime: `1 ${hourInPm} * * 1-5`, // Every weekday
         onTick: async () => {
           const courses = await updateCourseByUsername(username!);
           const topicId = courses?.find((course) => course.url_key === urlKey)?.latest_topic_id;

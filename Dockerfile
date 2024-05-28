@@ -25,8 +25,6 @@ WORKDIR /app
 
 COPY --from=deps --link /app/node_modules ./node_modules
 COPY --from=builder --link /app/dist ./dist
-
-COPY --link .env.example ./
 COPY --link package.json ./
 
 CMD ["npm", "run", "start"]

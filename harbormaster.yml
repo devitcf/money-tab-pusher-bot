@@ -1,9 +1,0 @@
-config:
-  prune: true
-apps:
-  money-tab_pusher-bot:
-    enabled: true
-    url: https://github.com/devitcf/money-tab-pusher-bot.git
-    branch: release
-    compose_config:
-      - compose.yaml

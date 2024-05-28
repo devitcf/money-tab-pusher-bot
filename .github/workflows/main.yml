@@ -1,0 +1,20 @@
+name: Build and Push Docker Image to Docker Hub
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v5.3.0
+        with:
+          push: true
+          tags: devitcf/money-tab_telegram-bot
+          secrets: |
+            "github_token=${{ secrets.GITHUB_TOKEN }}"  
+
+

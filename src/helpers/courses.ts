@@ -66,7 +66,7 @@ export const getVideosByUsername = async (
 
     bot
       .sendMessage(chatId, responseText, {
-        parse_mode: "Markdown",
+        parse_mode: "HTML",
         reply_markup: {
           inline_keyboard: [inlineKeyboard],
         },

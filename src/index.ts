@@ -143,6 +143,8 @@ bot.on("callback_query", async (query) => {
       if (course) {
         course.job = job;
       }
+      bot.sendMessage(chatId, `Course will be pushed every ${hourInPm}:30.`).catch((e) => logErrorMessage(e));
+
       break;
     }
   }

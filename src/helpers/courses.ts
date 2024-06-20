@@ -1,6 +1,6 @@
 import TelegramBot = require("node-telegram-bot-api");
 import { tokenSession } from "../session/tokenSession";
-import { getCourse, getPaidVideo } from "../api";
+import { getCourses, getPaidVideo } from "../api";
 import { courseSession } from "../session/courseSession";
 import wordings from "./wordings";
 import { ErrorType, QueryType, UserCourse } from "../types";
@@ -19,8 +19,8 @@ export const updateCourseByUsername = async (username: string, bot?: TelegramBot
       return;
     }
   }
-  const res = await getCourse(username);
-  const courses = res.value;
+  const res = await getCourses(username);
+  const courses = res.value ?? [];
 
   courseSession.updateCourseByUser(username, courses);
 

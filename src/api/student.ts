@@ -2,7 +2,7 @@ import { Course } from "../types";
 import { tokenSession } from "../session/tokenSession";
 import { renewToken } from "./auth";
 
-export const getCourse = async (username: string, retry = true): Promise<{ value: Course[] }> => {
+export const getCourses = async (username: string, retry = true): Promise<{ value: Course[] | undefined }> => {
   const token = tokenSession.getToken(username);
 
   const url = "https://api.money-tab.com/api/student/get-course";
@@ -19,6 +19,7 @@ export const getCourse = async (username: string, retry = true): Promise<{ value
       tokenSession.updateAccessToken(username, tokenRes.accessToken);
       tokenSession.updateRefreshToken(username, tokenRes.refreshToken);
       return getCourse(username, false);
+      return getCourses(username, false);
     }
     throw new Error(res.statusText);
   }

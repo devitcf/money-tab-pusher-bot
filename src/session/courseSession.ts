@@ -3,9 +3,9 @@ import { Course, UserCourse } from "../types";
 class CourseSession {
   courseByUser: { [username: string]: UserCourse[] } = {};
 
-  updateCourseByUser(username: string, course: Course[]) {
+  updateCourseByUser(username: string, courses: Course[]) {
     const existingCourses = this.courseByUser[username] ?? [];
-    const newCourses = course.map((course) => ({
+    const newCourses = courses.map((course) => ({
       ...course,
       job: existingCourses.find((c) => c.url_key === course.url_key)?.job ?? undefined,
     }));

@@ -5,7 +5,7 @@ import { courseSession } from "../session/courseSession";
 import wordings from "./wordings";
 import { ErrorType, QueryType, UserCourse } from "../types";
 import { logErrorMessage } from "./commands";
-import { getClearSubscriptionKeyboard, getSetSubscriptionKeyboard } from "./inlineKeyboards";
+import { getSetSubscriptionKeyboard } from "./inlineKeyboards";
 
 export const updateCourseByUsername = async (username: string, bot?: TelegramBot, chatId?: number) => {
   const token = tokenSession.getToken(username);
@@ -60,15 +60,13 @@ export const getVideosByUsername = async (
   let course: UserCourse | undefined;
   if (urlKey && bot && chatId) {
     course = courseSession.coursesByUser[username!]?.find((course) => course.url_key === urlKey);
-    const inlineKeyboard = course?.job
-      ? getClearSubscriptionKeyboard(urlKey)
-      : getSetSubscriptionKeyboard(chatId, urlKey);
+    const inlineKeyboard = course?.job ? [] : [getSetSubscriptionKeyboard(chatId, urlKey)];
 
     bot
       .sendMessage(chatId, responseText, {
         parse_mode: "HTML",
         reply_markup: {
-          inline_keyboard: [inlineKeyboard],
+          inline_keyboard: inlineKeyboard,
         },
       })
       .catch((e) => logErrorMessage(e));

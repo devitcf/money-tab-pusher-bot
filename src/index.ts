@@ -80,6 +80,21 @@ bot.onText(/\/course/, async (msg) => {
   }
 });
 
+// Handle /clear command
+bot.onText(/\/clear/, async (msg) => {
+  const {
+    chat: { username, id },
+  } = msg;
+  if (username) {
+    const courses = courseSession.coursesByUser[username];
+    courses.forEach((course) => {
+      course.job?.stop();
+      course.job = undefined;
+    });
+    bot.sendMessage(id, "All pusher jobs cleared.").catch((e) => logErrorMessage(e));
+  }
+});
+
 // Handle /logout command
 bot.onText(/\/logout/, async (msg) => {
   const {
@@ -127,15 +142,6 @@ bot.on("callback_query", async (query) => {
       const course = courseSession.coursesByUser[username!]?.find((course) => course.url_key === urlKey);
       if (course) {
         course.job = job;
-      }
-      break;
-    }
-    case QueryType.CLEAR_PUSHER_JOB: {
-      const [urlKey] = values;
-      const course = courseSession.coursesByUser[username!]?.find((course) => course.url_key === urlKey);
-      if (course) {
-        course.job?.stop();
-        course.job = undefined;
       }
       break;
     }

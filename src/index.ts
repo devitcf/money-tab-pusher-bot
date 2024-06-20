@@ -36,7 +36,7 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 // Handle /accessToken command
-bot.onText(/\/accesstoken(.*)/, (msg, match) => {
+bot.onText(/\/accesstoken(.*)/, async (msg, match) => {
   if (!match?.[1]) {
     bot
       .sendMessage(msg.chat.id, incorrectUsageMsg(Command.UPDATE_ACCESS_TOKEN), {
@@ -47,13 +47,13 @@ bot.onText(/\/accesstoken(.*)/, (msg, match) => {
   }
 
   const accessToken = match[1].replace(" ", "");
-  tokenSession.updateAccessToken(msg.chat.username!, accessToken);
+  await tokenSession.updateAccessToken(msg.chat.username!, accessToken);
 
   bot.sendMessage(msg.chat.id, "Access token saved.").catch((e) => logErrorMessage(e));
 });
 
 // Handle /refreshToken command
-bot.onText(/\/refreshtoken(.*)/, (msg, match) => {
+bot.onText(/\/refreshtoken(.*)/, async (msg, match) => {
   if (!match?.[1]) {
     bot
       .sendMessage(msg.chat.id, incorrectUsageMsg(Command.UPDATE_REFRESH_TOKEN), {
@@ -65,7 +65,7 @@ bot.onText(/\/refreshtoken(.*)/, (msg, match) => {
 
   const refreshToken = match[1].replace(" ", "");
 
-  tokenSession.updateRefreshToken(msg.chat.username!, refreshToken);
+  await tokenSession.updateRefreshToken(msg.chat.username!, refreshToken);
 
   bot.sendMessage(msg.chat.id, "Refresh token saved.").catch((e) => logErrorMessage(e));
 });
@@ -86,9 +86,10 @@ bot.onText(/\/logout/, async (msg) => {
     chat: { username, id },
   } = msg;
   if (username) {
-    courseSession.courseByUser[username]?.forEach((course) => course.job?.stop());
-    delete courseSession.courseByUser[username];
-    delete tokenSession.tokenByUser[username];
+    courseSession.coursesByUser[username]?.forEach((course) => course.job?.stop());
+    await courseSession.updateCourseByUser(username, []);
+    await tokenSession.deleteToken(username);
+    bot.sendMessage(id, "Tokens and courses removed.").catch((e) => logErrorMessage(e));
   }
 });
 
@@ -123,7 +124,7 @@ bot.on("callback_query", async (query) => {
         timeZone: "Asia/Hong_Kong",
       });
 
-      const course = courseSession.courseByUser[username!]?.find((course) => course.url_key === urlKey);
+      const course = courseSession.coursesByUser[username!]?.find((course) => course.url_key === urlKey);
       if (course) {
         course.job = job;
       }
@@ -131,7 +132,7 @@ bot.on("callback_query", async (query) => {
     }
     case QueryType.CLEAR_PUSHER_JOB: {
       const [urlKey] = values;
-      const course = courseSession.courseByUser[username!]?.find((course) => course.url_key === urlKey);
+      const course = courseSession.coursesByUser[username!]?.find((course) => course.url_key === urlKey);
       if (course) {
         course.job?.stop();
         course.job = undefined;

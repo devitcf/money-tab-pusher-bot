@@ -15,8 +15,8 @@ export const getPaidVideo = async (username: string, topicId: string, retry = tr
   if (res.status === 401 && retry) {
     if (token?.refreshToken) {
       const tokenRes = await renewToken(token.refreshToken);
-      tokenSession.updateAccessToken(username, tokenRes.accessToken);
-      tokenSession.updateRefreshToken(username, tokenRes.refreshToken);
+      await tokenSession.updateAccessToken(username, tokenRes.accessToken);
+      await tokenSession.updateRefreshToken(username, tokenRes.refreshToken);
       return getPaidVideo(username, topicId, false);
     }
     throw new Error(res.statusText);

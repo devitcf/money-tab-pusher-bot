@@ -2,5 +2,7 @@ services:
   money-tab_telegram-bot:
     image: devitcf/money-tab_telegram-bot
     restart: unless-stopped
+    volumes:
+      - "./mount_volumes:/app/storage:Z"
     env_file:
       - .env

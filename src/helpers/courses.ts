@@ -22,7 +22,7 @@ export const updateCourseByUsername = async (username: string, bot?: TelegramBot
   const res = await getCourses(username);
   const courses = res.value ?? [];
 
-  courseSession.updateCourseByUser(username, courses);
+  await courseSession.updateCourseByUser(username, courses);
 
   if (bot && chatId) {
     bot
@@ -59,7 +59,7 @@ export const getVideosByUsername = async (
 
   let course: UserCourse | undefined;
   if (urlKey && bot && chatId) {
-    course = courseSession.courseByUser[username!]?.find((course) => course.url_key === urlKey);
+    course = courseSession.coursesByUser[username!]?.find((course) => course.url_key === urlKey);
     const inlineKeyboard = course?.job
       ? getClearSubscriptionKeyboard(urlKey)
       : getSetSubscriptionKeyboard(chatId, urlKey);

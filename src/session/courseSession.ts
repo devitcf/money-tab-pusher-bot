@@ -33,7 +33,16 @@ class CourseSession {
       job: existingCourses.find((c) => c.url_key === course.url_key)?.job ?? undefined,
     }));
     this.coursesByUser[username] = newCourses;
-    await fse.outputJson(coursesJsonFile, this.coursesByUser);
+
+    const jsonData: { [username: string]: UserCourse[] } = {};
+    Object.entries(this.coursesByUser).forEach(([username, courses]) => {
+      jsonData[username] = courses.map((course) => ({
+        ...course,
+        job: undefined,
+      }));
+    });
+
+    await fse.outputJson(coursesJsonFile, jsonData);
   }
 }
 

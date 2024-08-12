@@ -4,6 +4,7 @@ import { renewToken } from "./auth";
 
 export const getPaidVideo = async (username: string, topicId: string, retry = true): Promise<{ videos: Video[] }> => {
   const token = tokenSession.getToken(username);
+
   const url = `https://api.money-tab.com/api/topic/paid-video?topic_id=${topicId}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token?.accessToken}` },

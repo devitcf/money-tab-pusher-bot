@@ -3,7 +3,7 @@ import { tokenSession } from "../session/tokenSession";
 import { getCourses, getPaidVideo } from "../api";
 import { courseSession } from "../session/courseSession";
 import wordings from "./wordings";
-import { ErrorType, QueryType, UserCourse } from "../types";
+import { ErrorType, QueryType, UserCourse, Video } from "../types";
 import { logErrorMessage } from "./commands";
 import { getSetSubscriptionKeyboard } from "./inlineKeyboards";
 
@@ -19,8 +19,18 @@ export const updateCourseByUsername = async (username: string, bot?: TelegramBot
       return;
     }
   }
-  const res = await getCourses(username);
-  const courses = res.value ?? [];
+
+  // Fetch new courses
+  let courses: UserCourse[] = [];
+  try {
+    const res = await getCourses(username);
+    courses = res.value ?? [];
+  } catch (e: unknown) {
+    console.error(wordings.ERROR_FETCHING_API);
+    if (bot && chatId) {
+      bot?.sendMessage(chatId, wordings.ERROR_FETCHING_API).catch((e) => logErrorMessage(e));
+    }
+  }
 
   await courseSession.updateCourseByUser(username, courses);
 
@@ -48,12 +58,26 @@ export const getVideosByUsername = async (
   bot?: TelegramBot,
   chatId?: number
 ) => {
-  const res = await getPaidVideo(username, topicId);
-  if (!res.videos) {
+  let videos: Video[] = [];
+  try {
+    const res = await getPaidVideo(username, topicId);
+    videos = res.videos ?? [];
+  } catch (e: unknown) {
+    console.error(wordings.ERROR_FETCHING_API);
+    if (bot && chatId) {
+      bot?.sendMessage(chatId, wordings.ERROR_FETCHING_API).catch((e) => logErrorMessage(e));
+    }
+  }
+
+  if (!videos || videos.length === 0) {
+    if (bot && chatId) {
+      bot?.sendMessage(chatId, wordings.NO_VIDEOS_FOUND).catch((e) => logErrorMessage(e));
+    }
     return;
   }
+
   let responseText = "";
-  for (const video of res.videos) {
+  for (const video of videos) {
     responseText += `${video.title} \n\n ${video.youtube?.video_url}`;
   }
 

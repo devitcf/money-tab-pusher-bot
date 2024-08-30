@@ -7,19 +7,19 @@ class TokenSession {
 
   constructor() {
     const exists = fse.pathExistsSync(tokenJsonFile);
-    if (exists) {
-      console.log("token.json exists, importing...");
-      fse
-        .readJson(tokenJsonFile, { throws: false })
-        .then((obj) => {
-          if (obj) {
-            this.tokenByUser = obj;
-          }
-        })
-        .catch((err) => {
-          console.error(err); // Not called
-        });
-    }
+    if (!exists) return;
+
+    console.log("token.json exists, importing...");
+    fse
+      .readJson(tokenJsonFile, { throws: false })
+      .then((obj) => {
+        if (obj) {
+          this.tokenByUser = obj;
+        }
+      })
+      .catch((err) => {
+        console.error(err); // Not called
+      });
   }
 
   getToken(username?: string) {

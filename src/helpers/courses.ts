@@ -1,23 +1,26 @@
-import TelegramBot = require("node-telegram-bot-api");
 import { tokenSession } from "../session/tokenSession";
 import { getCourses, getPaidVideo } from "../api";
 import { courseSession } from "../session/courseSession";
 import wordings from "./wordings";
-import { ErrorType, QueryType, UserCourse, Video } from "../types";
-import { logErrorMessage } from "./commands";
+import { QueryType, UserCourse, Video } from "../types";
 import { getSetSubscriptionKeyboard } from "./inlineKeyboards";
+import { chatSession } from "../session/chatSession";
+import TelegramBot from "node-telegram-bot-api";
+import { logErrorMessage } from "./commands";
 
-export const updateCourseByUsername = async (username: string, bot?: TelegramBot, chatId?: number) => {
+export const updateCourseByUsername = async (username: string, bot?: TelegramBot) => {
+  const chatId = chatSession.chatByUser[username]?.chatId as number | undefined;
+
   const token = tokenSession.getToken(username);
   if (!token || !token?.accessToken) {
-    if (bot && chatId) {
+    if (chatId) {
       bot
-        .sendMessage(chatId, wordings.MISSING_TOKEN_MSG, {
+        ?.sendMessage(chatId, wordings.MISSING_TOKEN_MSG, {
           parse_mode: "Markdown",
         })
-        .catch((e: ErrorType) => logErrorMessage(e));
-      return;
+        .catch((e) => logErrorMessage(e));
     }
+    return;
   }
 
   // Fetch new courses
@@ -27,37 +30,36 @@ export const updateCourseByUsername = async (username: string, bot?: TelegramBot
     courses = res.value ?? [];
   } catch (e: unknown) {
     console.error(wordings.ERROR_FETCHING_API);
-    if (bot && chatId) {
+    if (chatId) {
       bot?.sendMessage(chatId, wordings.ERROR_FETCHING_API).catch((e) => logErrorMessage(e));
     }
   }
 
   await courseSession.updateCourseByUser(username, courses);
 
-  if (bot && chatId) {
-    bot
-      .sendMessage(chatId, wordings.SELECT_YOUR_COURSE, {
-        reply_markup: {
-          inline_keyboard: [
-            courses.map((course) => ({
-              text: course.title,
-              callback_data: `${QueryType.VIEW_VIDEO}|${course.url_key}|${course.latest_topic_id}`,
-            })),
-          ],
-        },
-      })
-      .catch((e: ErrorType) => logErrorMessage(e));
-  }
+  const options =
+    courses.length > 0
+      ? {
+          reply_markup: {
+            inline_keyboard: [
+              courses.map((course) => ({
+                text: course.title,
+                callback_data: `${QueryType.VIEW_VIDEO}|${course.url_key}|${course.latest_topic_id}`,
+              })),
+            ],
+          },
+        }
+      : undefined;
+
+  const text = courses.length === 0 ? wordings.NO_COURSES_FOUND : wordings.SELECT_YOUR_COURSE;
+
+  if (chatId) await bot?.sendMessage(chatId, text, options).catch((e) => logErrorMessage(e));
   return courses;
 };
 
-export const getVideosByUsername = async (
-  username: string,
-  topicId: string,
-  urlKey?: string,
-  bot?: TelegramBot,
-  chatId?: number
-) => {
+export const getVideosByUsername = async (username: string, topicId: string, urlKey?: string, bot?: TelegramBot) => {
+  const chatId = chatSession.chatByUser[username]?.chatId as number | undefined;
+
   let videos: Video[] = [];
   try {
     const res = await getPaidVideo(username, topicId);
@@ -84,7 +86,7 @@ export const getVideosByUsername = async (
   let course: UserCourse | undefined;
   if (urlKey && bot && chatId) {
     course = courseSession.coursesByUser[username!]?.find((course) => course.url_key === urlKey);
-    const inlineKeyboard = course?.job ? [] : [getSetSubscriptionKeyboard(chatId, urlKey)];
+    const inlineKeyboard = course?.job ? [] : [getSetSubscriptionKeyboard(urlKey)];
 
     bot
       .sendMessage(chatId, responseText, {

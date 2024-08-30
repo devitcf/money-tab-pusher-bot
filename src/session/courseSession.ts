@@ -1,5 +1,5 @@
-import { Course, UserCourse } from "../types";
 import fse from "fs-extra";
+import { Course, UserCourse } from "../types";
 
 const coursesJsonFile = `/app/storage/courses.json`;
 
@@ -8,19 +8,19 @@ class CourseSession {
 
   constructor() {
     const exists = fse.pathExistsSync(coursesJsonFile);
-    if (exists) {
-      console.log("courses.json exists, importing...");
-      fse
-        .readJson(coursesJsonFile, { throws: false })
-        .then((obj) => {
-          if (obj) {
-            this.coursesByUser = obj;
-          }
-        })
-        .catch((err) => {
-          console.error(err); // Not called
-        });
-    }
+    if (!exists) return;
+
+    console.log("courses.json exists, importing...");
+    fse
+      .readJson(coursesJsonFile, { throws: false })
+      .then((obj) => {
+        if (obj) {
+          this.coursesByUser = obj;
+        }
+      })
+      .catch((err) => {
+        console.error(err); // Not called
+      });
   }
 
   async updateCourseByUser(username: string, courses: Course[]) {

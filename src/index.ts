@@ -1,10 +1,11 @@
-import TelegramBot = require("node-telegram-bot-api");
-import { incorrectUsageMsg, logErrorMessage } from "./helpers/commands";
-import { tokenSession } from "./session/tokenSession";
-import { courseSession } from "./session/courseSession";
-import { QueryType, Command, ErrorType } from "./types";
 import { CronJob } from "cron";
+import TelegramBot from "node-telegram-bot-api";
+import { chatSession } from "./session/chatSession";
+import { courseSession } from "./session/courseSession";
+import { tokenSession } from "./session/tokenSession";
+import { incorrectUsageMsg, logErrorMessage } from "./helpers/commands";
 import { getVideosByUsername, updateCourseByUsername } from "./helpers/courses";
+import { QueryType, Command } from "./types";
 
 require("dotenv").config();
 
@@ -19,15 +20,18 @@ const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN ?? "", {
   },
 });
 
+const { updateChatIdByUser } = chatSession;
+
 // Start command
 bot.onText(/\/start/, async (msg) => {
-  const { first_name: name, username } = msg.chat;
+  const { first_name: name, username, id: chatId } = msg.chat;
+  updateChatIdByUser(username!, chatId);
 
   if (!tokenSession.tokenByUser[username!]) {
-    bot.sendMessage(msg.chat.id, `Hi ${name}`).catch((e) => logErrorMessage(e));
-    bot
+    await bot.sendMessage(chatId, `Hi ${name}`).catch((e) => logErrorMessage(e));
+    await bot
       .sendMessage(
-        msg.chat.id,
+        chatId,
         "In order to use this bot, please provide your access token by the command `/accesstoken YOUR_ACCESS_TOKEN_HERE`",
         { parse_mode: "Markdown" }
       )
@@ -37,74 +41,81 @@ bot.onText(/\/start/, async (msg) => {
 
 // Handle /accessToken command
 bot.onText(/\/accesstoken(.*)/, async (msg, match) => {
+  const { username, id: chatId } = msg.chat;
+  updateChatIdByUser(username!, chatId);
+
   if (!match?.[1]) {
-    bot
-      .sendMessage(msg.chat.id, incorrectUsageMsg(Command.UPDATE_ACCESS_TOKEN), {
+    await bot
+      .sendMessage(chatId, incorrectUsageMsg(Command.UPDATE_ACCESS_TOKEN), {
         parse_mode: "Markdown",
       })
-      .catch((e: ErrorType) => logErrorMessage(e));
+      .catch((e) => logErrorMessage(e));
     return;
   }
 
   const accessToken = match[1].replace(" ", "");
-  await tokenSession.updateAccessToken(msg.chat.username!, accessToken);
+  await tokenSession.updateAccessToken(username!, accessToken);
 
-  bot.sendMessage(msg.chat.id, "Access token saved.").catch((e) => logErrorMessage(e));
+  await bot.sendMessage(chatId, "Access token saved.").catch((e) => logErrorMessage(e));
 });
 
 // Handle /refreshToken command
 bot.onText(/\/refreshtoken(.*)/, async (msg, match) => {
+  const { username, id: chatId } = msg.chat;
+  updateChatIdByUser(username!, chatId);
+
   if (!match?.[1]) {
-    bot
-      .sendMessage(msg.chat.id, incorrectUsageMsg(Command.UPDATE_REFRESH_TOKEN), {
+    await bot
+      .sendMessage(chatId, incorrectUsageMsg(Command.UPDATE_REFRESH_TOKEN), {
         parse_mode: "Markdown",
       })
-      .catch((e: ErrorType) => logErrorMessage(e));
+      .catch((e) => logErrorMessage(e));
     return;
   }
 
   const refreshToken = match[1].replace(" ", "");
+  await tokenSession.updateRefreshToken(username!, refreshToken);
 
-  await tokenSession.updateRefreshToken(msg.chat.username!, refreshToken);
-
-  bot.sendMessage(msg.chat.id, "Refresh token saved.").catch((e) => logErrorMessage(e));
+  await bot.sendMessage(chatId, "Refresh token saved.").catch((e) => logErrorMessage(e));
 });
 
 // Handle /course command
 bot.onText(/\/course/, async (msg) => {
-  const {
-    chat: { username, id },
-  } = msg;
+  const { username, id: chatId } = msg.chat;
+  updateChatIdByUser(username!, chatId);
+
   if (username) {
-    await updateCourseByUsername(username, bot, id);
+    await updateCourseByUsername(username, bot);
   }
 });
 
 // Handle /clear command
 bot.onText(/\/clear/, async (msg) => {
-  const {
-    chat: { username, id },
-  } = msg;
+  const { username, id: chatId } = msg.chat;
+  updateChatIdByUser(username!, chatId);
+
   if (username) {
     const courses = courseSession.coursesByUser[username];
-    courses.forEach((course) => {
+    courses?.forEach((course) => {
       course.job?.stop();
       course.job = undefined;
     });
-    bot.sendMessage(id, "All pusher jobs cleared.").catch((e) => logErrorMessage(e));
+    await bot.sendMessage(chatId, "All pusher jobs cleared.").catch((e) => logErrorMessage(e));
   }
 });
 
 // Handle /logout command
 bot.onText(/\/logout/, async (msg) => {
   const {
-    chat: { username, id },
+    chat: { username, id: chatId },
   } = msg;
+  updateChatIdByUser(username!, chatId);
+
   if (username) {
     courseSession.coursesByUser[username]?.forEach((course) => course.job?.stop());
     await courseSession.updateCourseByUser(username, []);
     await tokenSession.deleteToken(username);
-    bot.sendMessage(id, "Tokens and courses removed.").catch((e) => logErrorMessage(e));
+    await bot.sendMessage(chatId, "Tokens and courses removed.").catch((e) => logErrorMessage(e));
   }
 });
 
@@ -114,17 +125,19 @@ bot.on("callback_query", async (query) => {
   if (!chat || !data) {
     return;
   }
-  const { id: chatId, username } = chat;
+  const { username, id: chatId } = chat;
+  updateChatIdByUser(username!, chatId);
+
   const [queryType, ...values] = data.split("|");
 
   switch (queryType) {
     case QueryType.VIEW_VIDEO: {
       const [urlKey, topicId] = values;
-      await getVideosByUsername(username!, topicId, urlKey, bot, chatId);
+      await getVideosByUsername(username!, topicId, urlKey, bot);
       break;
     }
     case QueryType.SET_PUSHER_JOB: {
-      const [chatId, urlKey] = values;
+      const [urlKey] = values;
       const hourInPm = 12 + Number(urlKey[0]);
       const job = CronJob.from({
         cronTime: `30 ${hourInPm} * * 1-5`, // Every weekday
@@ -132,7 +145,7 @@ bot.on("callback_query", async (query) => {
           const courses = await updateCourseByUsername(username!);
           const topicId = courses?.find((course) => course.url_key === urlKey)?.latest_topic_id;
           if (topicId) {
-            await getVideosByUsername(username!, topicId, urlKey, bot, Number(chatId));
+            await getVideosByUsername(username!, topicId, urlKey, bot);
           }
         },
         start: true,
@@ -143,7 +156,7 @@ bot.on("callback_query", async (query) => {
       if (course) {
         course.job = job;
       }
-      bot.sendMessage(chatId, `Course will be pushed every ${hourInPm}:30.`).catch((e) => logErrorMessage(e));
+      await bot.sendMessage(chatId, `Course will be pushed every ${hourInPm}:30.`).catch((e) => logErrorMessage(e));
 
       break;
     }

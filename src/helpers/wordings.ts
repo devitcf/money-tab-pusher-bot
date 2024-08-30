@@ -5,6 +5,7 @@ const wordings = {
   SELECT_YOUR_COURSE: "Please select your course.",
   ERROR_FETCHING_API: "Error fetching API.",
   NO_VIDEOS_FOUND: "No videos found.",
+  NO_COURSES_FOUND: "No courses found.",
 };
 
 export default wordings;

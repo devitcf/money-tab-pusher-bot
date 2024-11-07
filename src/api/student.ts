@@ -15,9 +15,9 @@ export const getCourses = async (username: string, retry = true): Promise<{ valu
   }
   if (res.status === 401 && retry) {
     if (token?.refreshToken) {
-      const tokenRes = await renewToken(token.refreshToken);
-      await tokenSession.updateAccessToken(username, tokenRes.accessToken);
-      await tokenSession.updateRefreshToken(username, tokenRes.refreshToken);
+      const { accessToken, refreshToken } = await renewToken(token.refreshToken);
+      if (accessToken) await tokenSession.updateAccessToken(username, accessToken);
+      if (refreshToken) await tokenSession.updateRefreshToken(username, refreshToken);
       return getCourses(username, false);
     }
     throw new Error(res.statusText);

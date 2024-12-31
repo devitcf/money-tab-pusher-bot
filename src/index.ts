@@ -169,3 +169,16 @@ bot.on("callback_query", async (query) => {
     }
   }
 });
+
+// Handle /debug command
+bot.onText(/\/debug/, async (msg) => {
+  const { username, id: chatId } = msg.chat;
+  updateChatIdByUser(username!, chatId);
+
+  console.log(`========== Chat Session ==========`);
+  console.log(chatSession.chatByUser);
+  console.log(`========== Course Session ==========`);
+  console.log(courseSession.coursesByUser);
+  console.log(`========== Token Session ==========`);
+  console.log(tokenSession.tokenByUser);
+});

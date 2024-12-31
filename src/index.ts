@@ -139,6 +139,14 @@ bot.on("callback_query", async (query) => {
     case QueryType.SET_PUSHER_JOB: {
       const [urlKey] = values;
       const hourInPm = 12 + Number(urlKey[0]);
+
+      const course = courseSession.coursesByUser[username!]?.find((course) => course.url_key === urlKey);
+
+      // Clear existing job to prevent duplicate jobs
+      if (course?.job) {
+        course.job.stop();
+      }
+
       const job = CronJob.from({
         cronTime: `30 ${hourInPm} * * 1-5`, // Every weekday
         onTick: async () => {
@@ -151,11 +159,10 @@ bot.on("callback_query", async (query) => {
         start: true,
         timeZone: "Asia/Hong_Kong",
       });
-
-      const course = courseSession.coursesByUser[username!]?.find((course) => course.url_key === urlKey);
       if (course) {
         course.job = job;
       }
+
       await bot.sendMessage(chatId, `Course will be pushed every ${hourInPm}:30.`).catch((e) => logErrorMessage(e));
 
       break;

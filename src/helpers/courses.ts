@@ -80,7 +80,7 @@ export const getVideosByUsername = async (username: string, topicId: string, url
 
   let responseText = "";
   for (const video of videos) {
-    responseText += `${video.title} \n\n ${video.youtube?.video_url}`;
+    responseText += `${video.title}\n${video.youtube?.video_url}\n\n`;
   }
 
   let course: UserCourse | undefined;
@@ -89,7 +89,7 @@ export const getVideosByUsername = async (username: string, topicId: string, url
     const inlineKeyboard = course?.job ? [] : [getSetSubscriptionKeyboard(urlKey)];
 
     bot
-      .sendMessage(chatId, responseText, {
+      .sendMessage(chatId, responseText.trim(), {
         parse_mode: "HTML",
         reply_markup: {
           inline_keyboard: inlineKeyboard,

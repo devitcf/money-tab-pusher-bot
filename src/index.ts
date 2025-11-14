@@ -182,3 +182,8 @@ bot.onText(/\/debug/, async (msg) => {
   console.log(`========== Token Session ==========`);
   console.log(tokenSession.tokenByUser);
 });
+
+// Show EFATAL error message
+bot.on("polling_error", (error) => {
+  console.log(`[${new Date().toLocaleString("en-US", { timeZone: "Asia/Hong_Kong" })}] ${error}`);
+});

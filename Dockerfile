@@ -27,6 +27,8 @@ COPY --from=deps --link /app/node_modules ./node_modules
 COPY --from=builder --link /app/dist ./dist
 COPY --link package.json ./
 
+EXPOSE 3000
+
 CMD ["npm", "run", "start"]
 
 

@@ -4,5 +4,7 @@ services:
     restart: unless-stopped
     volumes:
       - "./mount_volumes:/app/storage:Z"
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
     env_file:
       - .env

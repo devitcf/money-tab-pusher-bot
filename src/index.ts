@@ -1,4 +1,5 @@
 import { CronJob } from "cron";
+import { createServer, IncomingMessage, ServerResponse } from "http";
 import TelegramBot from "node-telegram-bot-api";
 import { chatSession } from "./session/chatSession";
 import { courseSession } from "./session/courseSession";
@@ -9,8 +10,26 @@ import { QueryType, Command } from "./types";
 
 require("dotenv").config();
 
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN ?? "", {
-  polling: true,
+const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
+const webhookUrl = process.env.WEBHOOK_URL;
+const webhookSecret = process.env.WEBHOOK_SECRET;
+const port = Number(process.env.PORT ?? 3000);
+
+if (!telegramBotToken || !webhookUrl || !webhookSecret) {
+  throw new Error("TELEGRAM_BOT_TOKEN, WEBHOOK_URL, and WEBHOOK_SECRET are required.");
+}
+
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error("PORT must be a valid TCP port.");
+}
+
+const parsedWebhookUrl = new URL(webhookUrl);
+if (parsedWebhookUrl.protocol !== "https:") {
+  throw new Error("WEBHOOK_URL must use HTTPS.");
+}
+
+const webhookPath = parsedWebhookUrl.pathname;
+const bot = new TelegramBot(telegramBotToken, {
   request: {
     agentOptions: {
       keepAlive: true,
@@ -183,7 +202,80 @@ bot.onText(/\/debug/, async (msg) => {
   console.log(tokenSession.tokenByUser);
 });
 
-// Show EFATAL error message
-bot.on("polling_error", (error) => {
+bot.on("webhook_error", (error) => {
   console.log(`[${new Date().toLocaleString("en-US", { timeZone: "Asia/Hong_Kong" })}] ${error}`);
+});
+
+const sendResponse = (response: ServerResponse, statusCode: number, body: string) => {
+  response.writeHead(statusCode, { "Content-Type": "text/plain" });
+  response.end(body);
+};
+
+const handleWebhookRequest = (request: IncomingMessage, response: ServerResponse) => {
+  const requestPath = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`).pathname;
+
+  if (request.method === "GET" && requestPath === "/healthz") {
+    sendResponse(response, 200, "OK");
+    return;
+  }
+
+  if (request.method !== "POST" || requestPath !== webhookPath) {
+    sendResponse(response, 404, "Not found");
+    return;
+  }
+
+  if (request.headers["x-telegram-bot-api-secret-token"] !== webhookSecret) {
+    sendResponse(response, 401, "Unauthorized");
+    return;
+  }
+
+  let body = "";
+  request.setEncoding("utf8");
+  request.on("data", (chunk: string) => {
+    body += chunk;
+  });
+  request.on("end", () => {
+    try {
+      bot.processUpdate(JSON.parse(body) as TelegramBot.Update);
+      sendResponse(response, 200, "OK");
+    } catch (error) {
+      console.error("Failed to process Telegram update:", error);
+      sendResponse(response, 400, "Invalid update");
+    }
+  });
+};
+
+const server = createServer(handleWebhookRequest);
+
+const start = async () => {
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, "0.0.0.0", () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+
+  try {
+    await bot.setWebHook(webhookUrl, { secret_token: webhookSecret });
+    console.log(`Telegram webhook listening on port ${port}`);
+  } catch (error) {
+    server.close();
+    throw error;
+  }
+};
+
+const shutdown = async () => {
+  courseSession.coursesByUser &&
+    Object.values(courseSession.coursesByUser).forEach((courses) => courses.forEach((course) => course.job?.stop()));
+
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+};
+
+process.once("SIGINT", () => void shutdown().then(() => process.exit(0)));
+process.once("SIGTERM", () => void shutdown().then(() => process.exit(0)));
+
+void start().catch((error) => {
+  console.error("Failed to start Telegram webhook:", error);
+  process.exit(1);
 });

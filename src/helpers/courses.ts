@@ -1,5 +1,5 @@
 import { tokenSession } from "../session/tokenSession";
-import { getCourses, getPaidVideo } from "../api";
+import { getCourses, getPaidContent, getPaidVideo } from "../api";
 import { courseSession } from "../session/courseSession";
 import wordings from "./wordings";
 import { QueryType, UserCourse, Video } from "../types";
@@ -61,9 +61,14 @@ export const getVideosByUsername = async (username: string, topicId: string, url
   const chatId = chatSession.chatByUser[username]?.chatId as number | undefined;
 
   let videos: Video[] = [];
+  let excelLink = "";
   try {
-    const res = await getPaidVideo(username, topicId);
-    videos = res.videos ?? [];
+    const [videoRes, contentRes] = await Promise.all([
+      getPaidVideo(username, topicId),
+      getPaidContent(username, topicId),
+    ]);
+    videos = videoRes.videos ?? [];
+    excelLink = contentRes.excel_link ?? "";
   } catch (e: unknown) {
     console.error(wordings.ERROR_FETCHING_API);
     if (bot && chatId) {
@@ -82,6 +87,8 @@ export const getVideosByUsername = async (username: string, topicId: string, url
   for (const video of videos) {
     responseText += `${video.title}\n${video.youtube?.video_url}\n\n`;
   }
+
+  responseText += `Excel:\n${excelLink}`;
 
   let course: UserCourse | undefined;
   if (urlKey && bot && chatId) {
